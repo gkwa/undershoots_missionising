@@ -352,26 +352,6 @@ function Install-7zip {
 
 #endregion Functions
 
-#region Pre-check
-
-# Ensure we have all our streams setup correctly, needed for older PSVersions.
-Set-PSConsoleWriter
-
-if (Test-ChocolateyInstalled) {
-    $message = @(
-        "An existing Chocolatey installation was detected. Installation will not continue."
-        "For security reasons, this script will not overwrite existing installations."
-        ""
-        "Please use `choco upgrade chocolatey` to handle upgrades of Chocolatey itself."
-    ) -join [Environment]::NewLine
-
-    Write-Warning $message
-
-    return
-}
-
-#endregion Pre-check
-
 #region Setup
 
 $proxyConfig = if ($IgnoreProxy -or -not $ProxyUrl) {
@@ -400,7 +380,7 @@ try {
     # Use integers because the enumeration value for TLS 1.2 won't exist
     # in .NET 4.0, even though they are addressable if .NET 4.5+ is
     # installed (.NET 4.5 is an in-place upgrade).
-    Write-Host "Forcing web requests to allow TLS v1.2 (Required for requests to Chocolatey.org)"
+    Write-Host "Forcing web requests to allow TLS v1.2"
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 }
 catch {
@@ -423,37 +403,63 @@ if (-not $env:TEMP) {
 
 #endregion Setup
 
-
-#region Mystuff
-
-
-Function Get-QueryUser() {
-    Param([switch]$Json) 
-    $HT = @()
-    $Lines = @(query user).foreach( { $(($_) -replace ('\s{2,}', ',')) })
-    $header = $($Lines[0].split(',').trim())
-    for ($i = 1; $i -lt $($Lines.Count); $i++) {
-        $Res = "" | Select-Object $header
-        $Line = $($Lines[$i].split(',')).foreach( { $_.trim().trim('>') })
-        if ($Line.count -eq 5) { $Line = @($Line[0], "$($null)", $Line[1], $Line[2], $Line[3], $Line[4] ) }
-        for ($x = 0; $x -lt $($Line.count); $x++) {
-            $Res.$($header[$x]) = $Line[$x]
-        }
-        $HT += $Res
-        Remove-Variable Res
-    }
-    if ($Json) {
-        $JsonObj = [PSCustomObject]@{ $($env:COMPUTERNAME) = $HT } | ConvertTo-Json
-        Return $JsonObj
-    }
-    else {
-        Return $HT
-    }
-}
-
+#region Mylib
 Function Main() {
+    $install_basedir = "${env:ProgramFiles}/taylorm/budmashwhiskeys"
+    $ProgressPreference = 'SilentlyContinue'
+
+    MkDir -Force $install_basedir | Out-Null
+    MkDir -Force $install_basedir/temp | Out-Null
+    Set-Location $install_basedir
+
+    # debug
+    start $install_basedir
+
+    Write-Host "Fetching lib.ps1"
+    Remove-Item -Force -ErrorAction SilentlyContinue lib.ps1
+
+    Invoke-WebRequest -OutFile $install_basedir/temp/lib.ps1 -UseBasicParsing -Uri https://budmashwhiskeys.s3.us-west-2.amazonaws.com/lib.ps1
+    Move-Item $install_basedir/temp/lib.ps1 $install_basedir/lib.ps1
+
+    Write-Host "Fetching install.ps1"
+    Remove-Item -Force -ErrorAction SilentlyContinue install.ps1
+    Invoke-WebRequest -OutFile $install_basedir/temp/install.ps1 -UseBasicParsing -Uri https://budmashwhiskeys.s3.us-west-2.amazonaws.com/install.ps1
+    Move-Item $install_basedir/temp/install.ps1 $install_basedir/install.ps1
+
+    #region 7zip
+    if (!(Test-Path("$install_basedir/p7za.exe"))) {
+        Write-Host "Fetching 7za.exe"
+        Invoke-WebRequest -OutFile $install_basedir/temp/p7za.exe -UseBasicParsing -Uri 'https://community.chocolatey.org/7za.exe'
+        Move-Item $install_basedir/temp/p7za.exe $install_basedir/p7za.exe
+    }
+    #endregion 7zip
+
+    #region nssm
+    if (!(Test-Path("$install_basedir/nssm.exe"))) {
+        Write-Host "Fetching nssm"
+        Set-Location $install_basedir/temp
+        Invoke-WebRequest -OutFile $install_basedir/temp/nssm.zip -UseBasicParsing -Uri https://nssm.cc/ci/nssm-2.24-103-gdee49fc.zip
+        & $install_basedir/p7za.exe x -onssmextract $install_basedir/temp/nssm.zip
+        Copy-Item $install_basedir/temp/nssmextract/nssm*/win32/nssm.exe $install_basedir
+    }
+    #endregion nssm
+
+    Set-Location $install_basedir
+    if (!(Test-Path("$install_basedir/jq.exe"))) {
+        Write-Host "Fetching jq.exe"
+        Invoke-WebRequest -OutFile $install_basedir/temp/jq.exe -UseBasicParsing -Uri https://github.com/stedolan/jq/releases/download/jq-1.6/jq-win32.exe
+        Move-Item $install_basedir/temp/jq.exe $install_basedir/jq.exe
+    }
+
+    . $install_basedir/lib.ps1
+
+    # debug
+    Get-Content $install_basedir/lib.ps1
+
+    Remove-Item -Force -Recurse $install_basedir/temp
+
+    # meat
     Get-QueryUser -Json
 }
-
 Main
-#endregion MyStuff
+#endregion Mylib

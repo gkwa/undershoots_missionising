@@ -1,24 +1,37 @@
 * 
 ** 
 
+https://budmashwhiskeys.s3.us-west-2.amazonaws.com/install.ps1
+
+** 
+
+aws s3 mb s3://budmashwhiskeys
+aws s3 sync /Users/mtm/pdev/taylormonacelli/budmashwhiskeys s3://budmashwhiskeys --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers --region us-west-2 --delete --exclude='.git/'
+
+** 
+
+jq '.[]|.[] | select(.STATE=="Active")' test.json
+
+** 
+
 https://stackoverflow.com/a/43905715/16564820
 https://chocolatey.org/install.ps1
 
 ** fails from tls
 
 ```
-iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/TaylorMonacelli/undershoots_missionising/master/install.ps1'))
+iex ((New-Object System.Net.WebClient).DownloadString('https://budmashwhiskeys.s3.us-west-2.amazonaws.com/install.ps1'))
 ```
-
 
 ** this is annoying and works
 
 ```
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/TaylorMonacelli/undershoots_missionising/master/install.ps1'))
+iex ((New-Object System.Net.WebClient).DownloadString('https://budmashwhiskeys.s3.us-west-2.amazonaws.com/install.ps1'))
 ```
+
 ** this works
 
 ```
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/TaylorMonacelli/undershoots_missionising/master/install.ps1'))
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString('https://budmashwhiskeys.s3.us-west-2.amazonaws.com/install.ps1'))
 ```
