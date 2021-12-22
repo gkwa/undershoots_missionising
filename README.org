@@ -1,0 +1,24 @@
+* 
+** 
+
+https://stackoverflow.com/a/43905715/16564820
+https://chocolatey.org/install.ps1
+
+** fails from tls
+
+```
+iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/TaylorMonacelli/undershoots_missionising/master/install.ps1'))
+```
+
+
+** this is annoying and works
+
+```
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/TaylorMonacelli/undershoots_missionising/master/install.ps1'))
+```
+** this works
+
+```
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/TaylorMonacelli/undershoots_missionising/master/install.ps1'))
+```
