@@ -380,7 +380,7 @@ try {
     # Use integers because the enumeration value for TLS 1.2 won't exist
     # in .NET 4.0, even though they are addressable if .NET 4.5+ is
     # installed (.NET 4.5 is an in-place upgrade).
-    Write-Host "Forcing web requests to allow TLS v1.2"
+#    Write-Host "Forcing web requests to allow TLS v1.2"
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 }
 catch {
@@ -412,25 +412,27 @@ Function Main() {
     MkDir -Force $install_basedir/temp | Out-Null
     Set-Location $install_basedir
 
-    # debug
-    start $install_basedir
+    #region lib.ps1
+    if (!(Test-Path("$install_basedir/lib.ps1"))) {
+        Write-Host "Fetching lib.ps1"
+        Invoke-WebRequest -OutFile $install_basedir/temp/lib.ps1 -UseBasicParsing -Uri https://budmashwhiskeys.s3.us-west-2.amazonaws.com/lib.ps1
+        Move-Item $install_basedir/temp/lib.ps1 $install_basedir/lib.ps1
+    }
+    #endregion lib.ps1
 
-    Write-Host "Fetching lib.ps1"
-    Remove-Item -Force -ErrorAction SilentlyContinue lib.ps1
-
-    Invoke-WebRequest -OutFile $install_basedir/temp/lib.ps1 -UseBasicParsing -Uri https://budmashwhiskeys.s3.us-west-2.amazonaws.com/lib.ps1
-    Move-Item $install_basedir/temp/lib.ps1 $install_basedir/lib.ps1
-
-    Write-Host "Fetching install.ps1"
-    Remove-Item -Force -ErrorAction SilentlyContinue install.ps1
-    Invoke-WebRequest -OutFile $install_basedir/temp/install.ps1 -UseBasicParsing -Uri https://budmashwhiskeys.s3.us-west-2.amazonaws.com/install.ps1
-    Move-Item $install_basedir/temp/install.ps1 $install_basedir/install.ps1
+    #region install.ps1
+    if (!(Test-Path("$install_basedir/install.ps1"))) {
+        Write-Host "Fetching install.ps1"
+        Invoke-WebRequest -OutFile $install_basedir/temp/install.ps1 -UseBasicParsing -Uri https://budmashwhiskeys.s3.us-west-2.amazonaws.com/install.ps1
+        Move-Item $install_basedir/temp/install.ps1 $install_basedir/install.ps1
+    }
+    #endregion install.ps1
 
     #region 7zip
-    if (!(Test-Path("$install_basedir/p7za.exe"))) {
+    if (!(Test-Path("$install_basedir/7za.exe"))) {
         Write-Host "Fetching 7za.exe"
-        Invoke-WebRequest -OutFile $install_basedir/temp/p7za.exe -UseBasicParsing -Uri 'https://community.chocolatey.org/7za.exe'
-        Move-Item $install_basedir/temp/p7za.exe $install_basedir/p7za.exe
+        Invoke-WebRequest -OutFile $install_basedir/temp/7za.exe -UseBasicParsing -Uri 'https://community.chocolatey.org/7za.exe'
+        Move-Item $install_basedir/temp/7za.exe $install_basedir/7za.exe
     }
     #endregion 7zip
 
@@ -439,7 +441,7 @@ Function Main() {
         Write-Host "Fetching nssm"
         Set-Location $install_basedir/temp
         Invoke-WebRequest -OutFile $install_basedir/temp/nssm.zip -UseBasicParsing -Uri https://nssm.cc/ci/nssm-2.24-103-gdee49fc.zip
-        & $install_basedir/p7za.exe x -onssmextract $install_basedir/temp/nssm.zip
+        & $install_basedir/7za.exe x -onssmextract $install_basedir/temp/nssm.zip
         Copy-Item $install_basedir/temp/nssmextract/nssm*/win32/nssm.exe $install_basedir
     }
     #endregion nssm
@@ -452,9 +454,6 @@ Function Main() {
     }
 
     . $install_basedir/lib.ps1
-
-    # debug
-    Get-Content $install_basedir/lib.ps1
 
     Remove-Item -Force -Recurse $install_basedir/temp
 
